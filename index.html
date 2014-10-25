@@ -43,7 +43,10 @@
 				if (/^image\//.test(file.type)) {
 					imageFromFile(file).then(decorateImage).then(function (decorated) {
 						output.appendChild(decorated);
-						return canvasForDom(decorated);
+						return svgForDom(decorated);
+					}).then(function (svg) {
+						output.appendChild(svg);
+						return canvasForImage(svg);
 					}).then(function (canvas) {
 						output.appendChild(canvas);
 					}).catch(function (err) {
@@ -81,13 +84,28 @@
 			return canvas;
 		}
 
+		function stylesAsCss() {
+			var result = [];
+			for (var i = 0; i < document.styleSheets.length; i++) {
+				var styleSheet = document.styleSheets[i];
+				var rules = styleSheet.rules || styleSheet.cssRules;
+				for (var j = 0; j < rules.length; j++) {
+					var rule = rules[j];
+					result.push(rule.cssText);
+				}
+			}
+			return result.join('\n');
+		}
+
 		function svgForDom(element) {
 			return new Promise(function (resolve, reject) {
-				var width = element.offsetWidth;
-				var height = element.offsetHeight;
+				var width = element.offsetWidth + 20;
+				var height = element.offsetHeight + 20;
 				var data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
 						'<foreignObject width="100%" height="100%">' +
-						'<div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 40px"><h1>HI!</h1>' +
+						'<div xmlns="http://www.w3.org/1999/xhtml" style="padding: 10px">' +
+						'<style>' + stylesAsCss() + '</style>' +
+						element.outerHTML.replace(/<img ([^>]*)>/, '<img $1></img>') +
 						'</div>' +
 						'</foreignObject>' +
 						'</svg>';
@@ -105,17 +123,6 @@
 			});
 		}
 
-		function canvasForDom(element) {
-			return svgForDom(element).then(function (image) {
-				console.log('got svg', image);
-				var canvas = document.createElement("canvas");
-				canvas.width = element.offsetWidth;
-				canvas.height = element.offsetHeight;
-				var context = canvas.getContext("2d");
-				context.drawImage(image, 0, 0);
-				return canvas;
-			});
-		}
 	});
 </script>
 <style>
@@ -158,7 +165,10 @@
 		margin: 1em 5em;
 	}
 	#output > * {
-		margin: 1em;
+		vertical-align: top;
+	}
+	#output > .decorated {
+		margin: 10px;
 	}
 	.decorated {
 		display: inline-block;
@@ -174,7 +184,7 @@
 	.decorated::before {
 		content: "";
 		display: block;
-		border-image-source: url(top.png);
+		border-image-source: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFUAAAAZCAYAAABAb2JNAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3goZBhMjRESbGQAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAQ9SURBVGje7ZhPSxt5HIef+c1MrKmtmmrGBNpoiUZBRAVz8GIPBakgHvoG9tZbX8O+jVx22TfQHr1I8ORhI7jmoIiBEo3Q2GT8OzMx828vm6HdjdHYLqSQB34why/PTD75zvz+SACZTGYc+ANYABS6tIsD/An88u7du0Mpk8mkgL9mZmYeJRIJVFXtRtQmtm1TLBbJ5/M1YFYBfmsE6nkeNzc33ZQeQCKRAHiUz+d/V4C0pmk4jtNN5jvwPI+RkRHy+XxaARRZlvF9v5vMdyKEAJCVRspdbmd9fZ29vT00TUNRlKAzK5UK79+//0/9vUN1XZednR2Ojo4wTROAcDjMixcvmJubQ5bln8bRLmtra8RiMcrlMpFIBEmS8DwPRVGaZnevUC8vL9nY2GBwcJDp6WnC4TC+71Or1Tg+Pubjx4+8fv2ap0+fdrzjIZimSSqV4vT0tOm3tO1QXdclm80Sj8eZmJggHo/T19eH53kYhsHQ0BD7+/tks1lWVlaC16MTHQ/l8vKSbDZLNBoFwPf9YA5qlp28urr66/Pnz4PCf4/d3V1kWWZychJN01BVFd/38TwPSZLo6elBVVUMw0DXdaLRaMc6Hjo+fPhANBrlyZMnWJbF9fU1lmVhGAapVOqb2qOjo7s79fT0lPHxcVRVxTRN6vV6Y5bD8zxs2yYUChGLxTg8PGzq6hTHQ9E0jXq9ztXVFbqus7Kywt7eHgcHB7e//q7rttwt9Pf3BzutryWNLlFVlf7+fmzbburqFEc7+L6PJEkALCwskMvlKBaLvH37FoD5+XkuLi6a3ufOThVCIMtycAMhxDfXAJIkBXXNXJ3iaMXm5iavXr0CoFqtks1miUQizM7OEo1GefPmDaqqcn5+jm3b2LbN0tIShmG036mPHz/Gsiz6+vpQFCUYAI7j4DgOQghqtRq9vb1NXZ3iaEWxWGR7e5uxsTFyuRwvX77Esix2d3dZWlpC1/WmE1gz7uxUTdPQdT1Y+Pb09AQ/prEmdF0XXdcZGRlp6uoURyuGh4dxHIdCoUAsFgv+mEql0rZLNB7mtjE6Okq1WqVUKiGEQFEUQqEQoVAIRVEQQlAqlahWq4yOjna0o9VQFIXBwUEikQjhcBjTNLm4uGBtba0tz7061TRN0uk0uVwO13VJJpMMDAwgSRJXV1cUCgVOTk5Ip9OYptn0DKFTHPeZmCRJwvd96vU6y8vLWJbVdqdKmUzGn5qaalkkyzLPnj2jUCjw5csXbNsGQFVVhoeHSSaTVKvVlt+xTnHcxtbWFmNjYwgh8H0fXdcRQjA5OdmWZ39//37bVM/zKJfLxOPxYK3YWOYYhkG5XL6zMzrFcRvlchnXdYOVhOM4fP78mUqlwuLiYvudmkwmu4fMiUQQ6NecnZ1xfn5+b0+hUKB79PcPnz59+mGubqj/A91Qu6H+RKGWSqVuEj+QvwGcjG11wPBFXgAAAABJRU5ErkJggg==);
 		border-image-slice: 25 22 0 61;
 		border-width: 25px 22px 0 61px;
 		border-style: solid;
