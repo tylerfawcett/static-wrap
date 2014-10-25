@@ -8,6 +8,7 @@
 		if (!window.FileReader) return;
 
 		var drop = document.querySelector("#drop");
+		var output = document.querySelector("#output");
 
 		drop.addEventListener("dragenter", function (event) {
 			this.classList.add("over");
@@ -25,15 +26,14 @@
 
 			this.classList.remove("over");
 
-			clear();
+			clear(output);
 			processDropped(event.dataTransfer.files);
 		}, false);
 
-		var output = document.querySelector("#output");
 
-		function clear() {
-			while (output.children.length) {
-				output.removeChild(output.children[0]);
+		function clear(element) {
+			while (element.hasChildNodes()) {
+				element.removeChild(element.firstChild);
 			}
 		}
 
@@ -41,14 +41,17 @@
 			for (var i = 0; i < files.length; i++) {
 				var file = files[i];
 				if (/^image\//.test(file.type)) {
-					imageFromFile(file).then(decorateImage).then(function (decorated) {
-						output.appendChild(decorated);
+					imageFromFile(file).then(function (image) {
+						return decorateImage(image);
+					}).then(function (decorated) {
+						addResult("decorated-html", decorated);
 						return svgForDom(decorated);
 					}).then(function (svg) {
-						output.appendChild(svg);
+						addResult("decorated-svg", svg);
 						return canvasForImage(svg);
 					}).then(function (canvas) {
-						output.appendChild(canvas);
+						addResult("decorated-canvas", canvas);
+						prepareDownloadLink(canvas);
 					}).catch(function (err) {
 						console.log('failed', err);
 					});
@@ -99,18 +102,18 @@
 
 		function svgForDom(element) {
 			return new Promise(function (resolve, reject) {
-				var width = element.offsetWidth + 20;
-				var height = element.offsetHeight + 20;
+				var style = getComputedStyle(element);
+				var width = element.offsetWidth + parseInt(style.getPropertyValue("margin-left")) + parseInt(style.getPropertyValue("margin-right"));
+				var height = element.offsetHeight + parseInt(style.getPropertyValue("margin-top")) + parseInt(style.getPropertyValue("margin-bottom"));
 				var data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
 						'<foreignObject width="100%" height="100%">' +
-						'<div xmlns="http://www.w3.org/1999/xhtml" style="padding: 10px">' +
+						'<div xmlns="http://www.w3.org/1999/xhtml">' +
 						'<style>' + stylesAsCss() + '</style>' +
 						element.outerHTML.replace(/<img ([^>]*)>/, '<img $1></img>') +
 						'</div>' +
 						'</foreignObject>' +
 						'</svg>';
 
-				console.log('svg source', data);
 				var image = document.createElement("img");
 				var svg = new Blob([data], {type: "image/svg+xml;charset=utf-8"});
 				var url = URL.createObjectURL(svg);
@@ -121,6 +124,25 @@
 				};
 				image.src = url;
 			});
+		}
+
+		function prepareDownloadLink(canvas, filename) {
+			// doesn't work in Chrome, as drawing the svg marks the canvas tainted
+			// https://code.google.com/p/chromium/issues/detail?id=294129
+			var a = document.createElement("a");
+			a.href = canvas.toDataURL("png");
+			a.download = "example.png";
+			a.appendChild(document.createTextNode("download"));
+			var p = document.createElement("p");
+			p.appendChild(a);
+			canvas.parentNode.appendChild(p);
+		}
+
+		function addResult(type, node) {
+			var container = document.createElement("div");
+			container.classList.add(type);
+			container.appendChild(node);
+			output.appendChild(container);
 		}
 
 	});
@@ -164,16 +186,22 @@
 		display: block;
 		margin: 1em 5em;
 	}
+	#output p {
+		margin: 0;
+		font-size: smaller;
+	}
+	#output p a {
+		color: darkslateblue;
+	}
 	#output > * {
 		vertical-align: top;
-	}
-	#output > .decorated {
-		margin: 10px;
+		display: inline-block;
 	}
 	.decorated {
 		display: inline-block;
 		box-shadow: rgba(0, 0, 0, .3) 0 0 10px 1px;
 		border-radius: 3px 3px 0 0;
+		margin: 10px;
 	}
 	.decorated > * {
 		border-width: 0 1px 1px 1px;
