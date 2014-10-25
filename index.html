@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+	<meta charset="UTF-8">
+	<title>static wrap</title>
+<script>
+	document.addEventListener("DOMContentLoaded", function (event) {
+		if (!window.FileReader) return;
+
+		var drop = document.querySelector("#drop");
+
+		drop.addEventListener("dragenter", function (event) {
+			this.classList.add("over");
+		}, false);
+		drop.addEventListener("dragleave", function (event) {
+			this.classList.remove("over");
+		}, false);
+		drop.addEventListener("dragover", function (event) {
+			event.stopPropagation();
+			event.preventDefault();
+		}, false);
+		drop.addEventListener("drop", function (event) {
+			event.stopPropagation();
+			event.preventDefault();
+
+			this.classList.remove("over");
+
+			clear();
+			processDropped(event.dataTransfer.files);
+		}, false);
+
+		var output = document.querySelector("#output");
+
+		function clear() {
+			while (output.children.length) {
+				output.removeChild(output.children[0]);
+			}
+		}
+
+		function processDropped(files) {
+			for (var i = 0; i < files.length; i++) {
+				var file = files[i];
+				if (/^image\//.test(file.type)) {
+					addImage(file);
+				}
+			}
+		}
+
+		function addImage(file) {
+			var img = document.createElement("img");
+			img.file = file;
+			output.appendChild(img);
+
+			var reader = new FileReader();
+			reader.onload = function (e) {
+				img.src = e.target.result;
+			};
+			reader.readAsDataURL(file);
+		}
+	});
+</script>
+<style>
+	#settings {
+		list-style: none;
+		display: table;
+		margin: 0 auto;
+		padding: 0;
+		text-align: center;
+	}
+	#settings li {
+		display: table-cell;
+		width: 30%;
+	}
+	#settings p {
+		font-size: smaller;
+		color: #666;
+	}
+	#drop {
+		border-radius: 1em;
+		border: 0.2em solid paleturquoise;
+		display: inline-block;
+		text-align: center;
+		font-size: 3em;
+		width: 1.5em;
+		line-height: 1.5em;
+		color: #999;
+	}
+	#drop.over {
+		border-color: darkturquoise;
+		color: #333;
+	}
+	#output {
+		text-align: center;
+	}
+	#output::before {
+		border: 1px solid #EEE;
+		content: "";
+		display: block;
+		margin: 1em 5em;
+	}
+</style>
+</head>
+<body>
+	<ul id="settings">
+		<li>
+			<p>settings</p>
+		</li>
+		<li>
+			<p>(drag & drop)</p>
+			<div id="drop">&#8681;</div>
+		</li>
+		<li>
+			<p>info</p>
+			<span id="info"/>
+		</li>
+	</ul>
+	<div id="output"/>
+</body>
+</html>
