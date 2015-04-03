@@ -41,25 +41,29 @@
 			for (var i = 0; i < files.length; i++) {
 				var file = files[i];
 				if (/^image\//.test(file.type)) {
-					imageFromFile(file).then(function (image) {
-						return decorateImage(image);
-					}).then(function (decorated) {
-						addResult("decorated-html", decorated);
-						annotate(decorated, "image + css");
-						return svgForDom(decorated);
-					}).then(function (svg) {
-						addResult("decorated-svg", svg);
-						annotate(svg, "svg rendered to canvas");
-						return canvasForImage(svg);
-					}).then(function (canvas) {
-						addResult("decorated-canvas", canvas);
-						annotate(canvas, "canvas rendered to image");
-						prepareDownloadLink(canvas);
-					}).catch(function (err) {
-						console.log('failed', err);
-					});
+					processDroppedImage(file);
 				}
 			}
+		}
+
+		function processDroppedImage(file) {
+			imageFromFile(file).then(function (image) {
+				return decorateImage(image);
+			}).then(function (decorated) {
+				addResult("decorated-html", decorated);
+				annotate(decorated, "image + css");
+				return svgForDom(decorated);
+			}).then(function (svg) {
+				addResult("decorated-svg", svg);
+				annotate(svg, "svg rendered to canvas");
+				return canvasForImage(svg);
+			}).then(function (canvas) {
+				addResult("decorated-canvas", canvas);
+				annotate(canvas, "canvas rendered to image");
+				prepareDownloadLink(canvas, file.name);
+			}).catch(function (err) {
+				console.log('failed', err);
+			});
 		}
 
 		function decorateImage(image) {
@@ -142,7 +146,7 @@
 				// https://code.google.com/p/chromium/issues/detail?id=294129
 				var a = document.createElement("a");
 				a.href = canvas.toDataURL("png");
-				a.download = "example.png";
+				a.download = filename.replace(/\.[^.]{3,4}$/, "-wrapped.png");
 				a.appendChild(document.createTextNode("download"));
 				p.appendChild(a);
 				p.appendChild(document.createTextNode(" or "));
