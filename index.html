@@ -136,14 +136,18 @@
 		}
 
 		function prepareDownloadLink(canvas, filename) {
-			// doesn't work in Chrome, as drawing the svg marks the canvas tainted
-			// https://code.google.com/p/chromium/issues/detail?id=294129
-			var a = document.createElement("a");
-			a.href = canvas.toDataURL("png");
-			a.download = "example.png";
-			a.appendChild(document.createTextNode("download"));
 			var p = document.createElement("p");
-			p.appendChild(a);
+			try {
+				// doesn't work in Chrome, as drawing the svg marks the canvas tainted
+				// https://code.google.com/p/chromium/issues/detail?id=294129
+				var a = document.createElement("a");
+				a.href = canvas.toDataURL("png");
+				a.download = "example.png";
+				a.appendChild(document.createTextNode("download"));
+				p.appendChild(a);
+				p.appendChild(document.createTextNode(" or "));
+			} catch (e) {}
+			p.appendChild(document.createTextNode("right-click and save as"));
 			canvas.parentNode.appendChild(p);
 		}
 
@@ -243,7 +247,7 @@
 	<div id="output">
 	</div>
 	<div id="about">
-		<p>Unfortunately, this only works in Firefox. Chrome can do the transformations, but won't let you download the result (<a href="https://code.google.com/p/chromium/issues/detail?id=294129">issue 294129</a>).</p>
+		<p>This works best in Firefox. Chrome can do the transformations, but won't create a download link for the result (<a href="https://code.google.com/p/chromium/issues/detail?id=294129">issue 294129</a>).</p>
 	</div>
 </body>
 </html>
