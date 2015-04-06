@@ -78,8 +78,10 @@
 				var image = document.createElement("img");
 				var reader = new FileReader();
 				reader.onload = function (event) {
+					image.onload = function () {
+						resolve(image);
+					};
 					image.src = event.target.result;
-					resolve(image);
 				};
 				reader.readAsDataURL(file);
 			});
